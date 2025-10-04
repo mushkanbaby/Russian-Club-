@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russian Club - Admin Panel (Firebase Auth Secured)</title>
+    <link rel="stylesheet" href="rajni.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <!-- Your master firebaseConfig.js must initialize Firebase app and allow firebase.auth() & firebase.firestore() to be used -->
+    <script src="firebaseConfig.js"></script>
+</head>
+<body>
+
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="logo-text">
+                <span class="russian-color">ADMIN</span><span class="club-color">LOGIN</span>
+            </div>
+
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="username">Admin Email ID</label>
+                    <input type="email" id="username" required> 
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                
+                <button type="submit" class="login-btn">Log In</button>
+                <div id="loginMessage"></div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="dashboardWrapper" class="dashboard-wrapper">
+        
+        <div class="sidebar">
+            <div class="logo-header">
+                <div class="logo-text">
+                    <span class="russian-color">ADMIN</span><span class="club-color">PANEL</span>
+                </div>
+            </div>
+
+            <a href="#" class="nav-link active" data-tab="dashboard">
+                <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-link" data-tab="user-management">
+                <i class="fa fa-users"></i> <span>User Management</span>
+            </a>
+            <a href="#" class="nav-link" data-tab="withdrawal-requests">
+                <i class="fa fa-arrow-circle-down"></i> <span>Withdrawal Requests</span>
+            </a>
+            <a href="#" class="nav-link" data-tab="deposit-history">
+                <i class="fa fa-arrow-circle-up"></i> <span>Deposit History</span>
+            </a>
+            <a href="#" class="nav-link" data-tab="announcements">
+                <i class="fa fa-bullhorn"></i> <span>Announcements</span>
+            </a>
+        </div>
+
+        <div class="main-panel">
+            
+            <div class="header-bar">
+                <h2 id="welcomeMessage">Welcome, Admin!</h2>
+                <div class="search-container">
+                    <input type="text" id="globalSearch" placeholder="Search by UID, Username, UTR, etc...">
+                </div>
+                <button class="logout-btn" onclick="logoutAdmin()">Logout <i class="fa fa-sign-out"></i></button>
+            </div>
+
+            <div id="dashboard" class="tab-content active">
+                <h3>📈 Site Overview</h3>
+                <div class="dashboard-grid">
+                    <div class="widget">
+                        <div class="widget-title">Total Users</div>
+                        <div class="widget-value" id="totalUsersCount">Loading...</div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title">Total Deposits (Pending)</div>
+                        <div class="widget-value" id="pendingDepositsCount">Loading...</div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title">Total Withdrawals (Pending)</div>
+                        <div class="widget-value pink" id="pendingWithdrawals">Loading...</div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title">Total Balance (Users)</div>
+                        <div class="widget-value" id="totalUserBalance">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="data-table-container">
+                    <h3>Recent Activity Feed</h3>
+                    <p style="color: #999;">Data will be updated from Firebase...</p>
+                </div>
+            </div>
+
+            <div id="user-management" class="tab-content">
+                <div class="data-table-container">
+                    <h3>👥 User Management</h3>
+                    <table id="userTable">
+                        <thead>
+                            <tr>
+                                <th>UID (Numerical)</th>
+                                <th>Username</th>
+                                <th>Mobile No.</th>
+                                <th>Status</th>
+                                <th>Balance (₹)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <tr><td colspan="6" style="text-align: center;">Loading users...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="withdrawal-requests" class="tab-content">
+                <div class="data-table-container">
+                    <h3>💸 Withdrawal Requests (Pending)</h3>
+                    <table id="withdrawalTable">
+                        <thead>
+                            <tr>
+                                <th>Req ID</th>
+                                <th>UID (Numerical)</th>
+                                <th>Amount (₹)</th>
+                                <th>UPI/Account</th>
+                                <th>Request Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawalTableBody">
+                            <tr><td colspan="6" style="text-align: center;">Loading withdrawal requests...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="deposit-history" class="tab-content">
+                <div class="data-table-container">
+                    <h3>💳 All Deposit History</h3>
+                    <table id="depositTable">
+                        <thead>
+                            <tr>
+                                <th>Txn ID</th>
+                                <th>UID (Numerical)</th>
+                                <th>Amount (₹)</th>
+                                <th>UTR No.</th>
+                                <th>Method</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="depositTableBody">
+                            <tr><td colspan="7" style="text-align: center;">Loading deposit history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="announcements" class="tab-content">
+                <div class="data-table-container">
+                    <h3>📣 Manage Site Announcements</h3>
+                    <button class="action-btn" style="background-color: var(--accent-gold); color: var(--dark-bg); margin-top: 10px;" onclick="addAnnouncement()">+ Create New Announcement</button>
+                    <div class="announcement-list" id="announcementList">
+                        <p style="color: #999;">Loading announcements...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div> 
+    </div>
+
+<script>
+    // IMPORTANT: This HTML expects that firebaseConfig.js (included earlier) has already
+    // initialized firebase (firebase.initializeApp(...)) so firebase.auth() and firebase.firestore() are available.
+
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- 2. AUTHENTICATION (Firebase Auth Logic) ---
+    
+    const loginScreen = document.getElementById('loginScreen');
+    const dashboardWrapper = document.getElementById('dashboardWrapper');
+    const loginForm = document.getElementById('loginForm');
+    const loginMessage = document.getElementById('loginMessage');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    
+    function showDashboard(userEmail) {
+        loginScreen.style.display = 'none';
+        dashboardWrapper.classList.add('visible');
+        dashboardWrapper.style.display = 'flex'; 
+        document.body.style.display = 'flex';
+        welcomeMessage.textContent = `Welcome, ${userEmail}!`;
+        loadAllData();
+    }
+
+    function showLoginScreen() {
+        dashboardWrapper.classList.remove('visible');
+        dashboardWrapper.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        document.body.style.display = 'block'; 
+    }
+
+    // Check auth state on load
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            showDashboard(user.email);
+        } else {
+            showLoginScreen();
+        }
+    });
+
+
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        loginMessage.textContent = 'Logging in...';
+        loginMessage.style.color = '#ffc700';
+
+        // Firebase Authentication Sign-In
+        auth.signInWithEmailAndPassword(email, password)
+            .then((userCredential) => {
+                loginMessage.textContent = 'Login successful!';
+                loginMessage.style.color = 'green';
+            })
+            .catch((error) => {
+                console.error("Login Error:", error);
+                loginMessage.textContent = `Login Failed: ${error.message}`;
+                loginMessage.style.color = 'red';
+            });
+    });
+
+    window.logoutAdmin = function() {
+        auth.signOut().then(() => {
+            loginMessage.textContent = 'Logged out successfully.';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }).catch((error) => {
+            console.error("Sign out error:", error);
+        });
+    }
+
+    // --- 3. FIREBASE DATA MANAGEMENT ---
+
+    // Sample data (kept for initialization if needed)
+    const sampleUsers = {
+        'firebase-uid-1': { numericalUID: '226519', username: 'Chand Kishor', mobile: '9876543210', status: 'active', balance: 167.00, password: 'userpass123' },
+        'firebase-uid-2': { numericalUID: '226520', username: 'Vishnu Kumar', mobile: '8888777766', status: 'banned', balance: 45.00, password: 'bannedpwd456' },
+        'firebase-uid-3': { numericalUID: '226521', username: 'Admin Test', mobile: '9999999999', status: 'active', balance: 12345.00, password: 'adminuserpwd' }
+    };
+    const sampleWithdrawals = {
+        'WDR1001': { reqId: 'WDR1001', uid: '226520', amount: 5000, account: 'upi://xyz@bank', time: new Date().toISOString(), status: 'pending' },
+        'WDR1002': { reqId: 'WDR1002', uid: '226519', amount: 2500, account: 'Bank: 1234xxxx | IFSC: HDFC0000001', time: new Date().toISOString(), status: 'pending' }
+    };
+    const sampleDeposits = {
+        'DEP9001': { txnId: 'DEP9001', uid: '226519', amount: 500, utr: '934012345678', method: 'UPI', time: new Date().toISOString(), status: 'approved' },
+        'DEP9002': { txnId: 'DEP9002', uid: '226520', amount: 1000, utr: '456789123456', method: 'Bank Transfer', time: new Date().toISOString(), status: 'approved' },
+        'DEP9003': { txnId: 'DEP9003', uid: '226521', amount: 300, utr: '(N/A)', method: 'UPI', time: new Date().toISOString(), status: 'rejected' }
+    };
+    const sampleAnnouncements = {
+        'ANN001': { title: 'New Game Launch', content: 'Our new game is now live!', date: new Date().toISOString(), active: true },
+        'ANN002': { title: 'Maintenance Notice', content: 'Scheduled maintenance tonight from 2 AM to 4 AM.', date: new Date().toISOString(), active: true }
+    };
+
+    async function initializeCollections() {
+        const collections = [
+            { name: 'users', data: sampleUsers },
+            { name: 'withdrawals', data: sampleWithdrawals },
+            { name: 'deposits', data: sampleDeposits },
+            { name: 'announcements', data: sampleAnnouncements }
+        ];
+
+        for (const collectionInfo of collections) {
+            const ref = db.collection(collectionInfo.name);
+            try {
+                const snapshot = await ref.limit(1).get();
+                if (snapshot.empty) {
+                    console.log(`Collection ${collectionInfo.name} is empty. Adding sample data.`);
+                    for (const id in collectionInfo.data) {
+                        await ref.doc(id).set(collectionInfo.data[id]);
+                    }
+                }
+            } catch (error) {
+                console.warn(`Warning: Could not check or initialize collection ${collectionInfo.name}. Firebase Error:`, error.message);
+            }
+        }
+    }
+
+    async function loadAllData() {
+        await initializeCollections(); 
+        
+        db.collection('users').onSnapshot(snapshot => {
+            let totalBalance = 0;
+            const usersData = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                usersData.push({ id: doc.id, ...data }); 
+                totalBalance += data.balance || 0;
+            });
+            document.getElementById('totalUsersCount').textContent = snapshot.size.toLocaleString();
+            document.getElementById('totalUserBalance').textContent = `₹${totalBalance.toFixed(2).toLocaleString()}`;
+            renderUserTable(usersData);
+        }, error => {
+            console.error("Error fetching users. Check Firestore Rules!:", error);
+            document.getElementById('totalUsersCount').textContent = 'Error!'; 
+            document.getElementById('totalUserBalance').textContent = 'Error!';
+            document.getElementById('userTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Failed to load users. Check console and Firebase Rules.</td></tr>';
+        });
+
+        db.collection('withdrawals').onSnapshot(snapshot => {
+            let pendingTotal = 0;
+            const pendingRequests = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.status === 'pending') {
+                    pendingTotal += data.amount || 0;
+                    pendingRequests.push({ id: doc.id, ...data });
+                }
+            });
+            document.getElementById('pendingWithdrawals').textContent = `₹${pendingTotal.toLocaleString()}`;
+            renderWithdrawalTable(pendingRequests);
+        }, error => {
+            document.getElementById('pendingWithdrawals').textContent = 'Error!';
+            document.getElementById('withdrawalTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Failed to load requests.</td></tr>';
+        });
+        
+        db.collection('deposits').onSnapshot(snapshot => {
+            let pendingTotal = 0;
+            const depositHistory = [];
+             snapshot.forEach(doc => {
+                const data = doc.data();
+                depositHistory.push({ id: doc.id, ...data });
+                if (data.status === 'pending') {
+                    pendingTotal += data.amount || 0;
+                }
+            });
+            document.getElementById('pendingDepositsCount').textContent = `₹${pendingTotal.toLocaleString()}`;
+            renderDepositTable(depositHistory);
+        }, error => {
+            document.getElementById('pendingDepositsCount').textContent = 'Error!';
+            document.getElementById('depositTableBody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Failed to load history.</td></tr>';
+        });
+        
+        db.collection('announcements').orderBy('date', 'desc').onSnapshot(snapshot => {
+            renderAnnouncementList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }, error => {
+            document.getElementById('announcementList').innerHTML = '<p style="color: red;">Failed to load announcements.</p>';
+        });
+    }
+
+    // --- 4. RENDER AND ACTION FUNCTIONS (No changes needed here, they use doc IDs) ---
+
+    function renderUserTable(users) {
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = '';
+        users.forEach(user => {
+            const displayUID = user.numericalUID || user.id.substring(0, 6); 
+            const statusClass = user.status === 'active' ? 'status-active' : 'status-banned';
+            const actionBtn = user.status === 'active' ? 
+                `<button class="action-btn btn-ban" onclick="processUserAction('${user.id}', 'ban')"><i class="fa fa-ban"></i> Ban</button>` :
+                `<button class="action-btn btn-unban" onclick="processUserAction('${user.id}', 'unban')"><i class="fa fa-check"></i> Unban</button>`;
+            
+            const row = `
+                <tr>
+                    <td>${displayUID}</td>
+                    <td>${user.username}</td>
+                    <td>${user.mobile}</td>
+                    <td><span class="status-badge ${statusClass}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
+                    <td>${(user.balance || 0).toFixed(2)}</td>
+                    <td>
+                        <button class="action-btn btn-password" onclick="manageUserPassword('${user.id}', '${user.username}')"><i class="fa fa-key"></i> Password</button>
+                        ${actionBtn}
+                        <button class="action-btn btn-view" onclick="viewUserDetails('${user.id}')"><i class="fa fa-eye"></i> Details</button>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No users found.</td></tr>';
+        }
+    }
+
+    function renderWithdrawalTable(requests) {
+        const tbody = document.getElementById('withdrawalTableBody');
+        tbody.innerHTML = '';
+        requests.forEach(req => {
+            const row = `
+                <tr>
+                    <td>${req.reqId}</td>
+                    <td>${req.uid}</td>
+                    <td>${(req.amount || 0).toLocaleString()}</td>
+                    <td>${req.account}</td>
+                    <td>${new Date(req.time).toLocaleString()}</td>
+                    <td>
+                        <button class="action-btn btn-approve" onclick="processWithdrawal('${req.id}', 'approved')">Approve</button>
+                        <button class="action-btn btn-reject" onclick="processWithdrawal('${req.id}', 'rejected')">Reject</button>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        if (requests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No pending withdrawal requests.</td></tr>';
+        }
+    }
+
+    function renderDepositTable(deposits) {
+        const tbody = document.getElementById('depositTableBody');
+        tbody.innerHTML = '';
+        deposits.forEach(dep => {
+            const statusClass = dep.status === 'approved' ? 'status-approved' : dep.status === 'pending' ? 'status-pending' : 'status-rejected';
+            const row = `
+                <tr>
+                    <td>${dep.txnId}</td>
+                    <td>${dep.uid}</td>
+                    <td>${(dep.amount || 0).toLocaleString()}</td>
+                    <td>${dep.utr}</td>
+                    <td>${dep.method}</td>
+                    <td>${new Date(dep.time).toLocaleString()}</td>
+                    <td><span class="status-badge ${statusClass}">${dep.status.charAt(0).toUpperCase() + dep.status.slice(1)}</span></td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        if (deposits.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No deposit history found.</td></tr>';
+        }
+    }
+    
+    function renderAnnouncementList(announcements) {
+        const listDiv = document.getElementById('announcementList');
+        listDiv.innerHTML = '';
+        announcements.forEach(ann => {
+            const row = `
+                <div class="announcement-card">
+                    <h4>${ann.title}</h4>
+                    <small>Date: ${new Date(ann.date).toLocaleDateString()} | Active: ${ann.active ? 'Yes' : 'No'}</small>
+                    <p>${ann.content}</p>
+                    <button class="action-btn btn-ban" style="background-color: #f33;" onclick="deleteAnnouncement('${ann.id}')">Delete</button>
+                </div>
+            `;
+            listDiv.innerHTML += row;
+        });
+        if (announcements.length === 0) {
+            listDiv.innerHTML = '<p style="color: #999;">No active announcements.</p>';
+        }
+    }
+
+    // Action functions are the same:
+    window.manageUserPassword = async function(docId, username) { 
+        try {
+            const userDoc = await db.collection('users').doc(docId).get();
+            if (!userDoc.exists) {
+                alert(`Error: User ${docId} not found.`);
+                return;
+            }
+            const userData = userDoc.data();
+            const currentPassword = userData.password || 'N/A (No Password Field)'; 
+
+            const action = prompt(`User: ${username}\nNumerical UID: ${userData.numericalUID || 'N/A'}\n\nSelect Action:\n1. View Password\n2. Reset Password`);
+
+            if (action === '1') {
+                alert(`VIEW PASSWORD:\nUser ${username}'s current password is: ${currentPassword}`);
+            } else if (action === '2') {
+                const newPassword = prompt(`RESET PASSWORD for ${username}:\nEnter NEW password:`);
+                if (newPassword) {
+                    await db.collection('users').doc(docId).update({ password: newPassword });
+                    alert(`SUCCESS: Password for ${username} (UID: ${userData.numericalUID || 'N/A'}) has been reset to: ${newPassword}`);
+                }
+            }
+        } catch (error) {
+            console.error("Error managing password:", error);
+            alert("An error occurred during password operation. Check console.");
+        }
+    }
+    
+    window.processUserAction = async function(docId, action) { 
+        const newStatus = action === 'ban' ? 'banned' : 'active';
+        if (confirm(`Confirm ${action.toUpperCase()} user (ID: ${docId})?`)) {
+            try {
+                await db.collection('users').doc(docId).update({ status: newStatus });
+                alert(`User status updated to: ${newStatus}`);
+            } catch (error) {
+                console.error("Error updating user status:", error);
+                alert("Failed to update user status.");
+            }
+        }
+    }
+
+    window.processWithdrawal = async function(docId, newStatus) { 
+        if (confirm(`Confirm ${newStatus.toUpperCase()} request ${docId}?`)) {
+            try {
+                await db.collection('withdrawals').doc(docId).update({ status: newStatus, processedTime: new Date().toISOString() });
+                alert(`Request ${docId} has been ${newStatus}.`);
+            } catch (error) {
+                console.error("Error processing withdrawal:", error);
+                alert("Failed to process withdrawal. Check console.");
+            }
+        }
+    }
+
+    window.addAnnouncement = async function() {
+        const title = prompt("Enter Announcement Title:");
+        if (!title) return;
+        const content = prompt("Enter Announcement Content:");
+        if (!content) return;
+
+        try {
+            await db.collection('announcements').add({
+                title: title,
+                content: content,
+                date: new Date().toISOString(),
+                active: true
+            });
+            alert("Announcement created successfully!");
+        } catch (error) {
+            console.error("Error creating announcement:", error);
+            alert("Failed to create announcement.");
+        }
+    }
+
+    window.deleteAnnouncement = async function(id) {
+        if (confirm("Are you sure you want to delete this announcement?")) {
+            try {
+                await db.collection('announcements').doc(id).delete();
+                alert("Announcement deleted.");
+            } catch (error) {
+                console.error("Error deleting announcement:", error);
+                alert("Failed to delete announcement.");
+            }
+        }
+    }
+
+    window.viewUserDetails = async function(docId) { 
+        try {
+            const userDoc = await db.collection('users').doc(docId).get();
+            if (!userDoc.exists) {
+                alert(`User ${docId} not found.`);
+                return;
+            }
+            const data = userDoc.data();
+            const details = `
+                --- USER DETAILS ---
+                Numerical UID: ${data.numericalUID || 'N/A'}
+                Firestore ID (Auth UID): ${docId}
+                Username: ${data.username}
+                Mobile: ${data.mobile}
+                Status: ${data.status.toUpperCase()}
+                Balance: ₹${(data.balance || 0).toFixed(2)}
+                Last Login: ${data.lastLogin ? new Date(data.lastLogin).toLocaleString() : 'N/A'}
+                Password: ${data.password || 'N/A (No Password Field)'}
+                ------------------
+            `;
+            alert(details);
+
+        } catch (error) {
+            console.error("Error viewing user details:", error);
+            alert("Failed to fetch user details. Check console.");
+        }
+    }
+
+
+    // --- 5. EVENT LISTENERS ---
+
+    // Tab switching logic
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+
+            this.classList.add('active');
+            const tabId = this.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+
+</script>
+</body>
+</html>
